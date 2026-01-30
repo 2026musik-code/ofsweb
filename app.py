@@ -9,6 +9,7 @@ import uuid
 import json
 import base64
 from datetime import datetime, timedelta
+from vpn_utils import VPNManager
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'diana-vpn-secret-key-change-me')
@@ -211,20 +212,50 @@ def create_account():
         expiry=expiry_date
     )
 
-    # Mock Logic for different types
-    if acc_type in ['ssh', 'ss']:
+    # Logic for different types
+    success = False
+
+    if acc_type == 'ssh':
         new_acc.password = password
-        new_acc.port = 22 if acc_type == 'ssh' else 8388
+        new_acc.port = 22
+        if VPNManager.create_ssh_user(username, password, expiry_date):
+            success = True
+
     elif acc_type in ['vmess', 'vless', 'trojan']:
         new_acc.uuid = str(uuid.uuid4())
         new_acc.port = 443
-        new_acc.protocol = 'ws' # default to ws tls as requested
-        # new_acc.domain = 'example.com'
+        new_acc.protocol = 'ws'
+        # new_acc.domain is set by default or handled elsewhere
 
-    db.session.add(new_acc)
-    db.session.commit()
+        # Determine protocol tag for Xray (simple mapping)
+        # Assuming vpn_utils handles the tag finding based on protocol
+        if VPNManager.add_xray_user(acc_type, username, new_acc.uuid):
+            success = True
 
-    return jsonify({'success': True, 'message': f'{acc_type.upper()} Account created'})
+    elif acc_type == 'ss':
+         # Shadowsocks can be SSH-based (libev) or Xray-based.
+         # Assuming Xray Shadowsocks for simplicity as per requirement "Xray dan mesin lainya"
+         # But usually SS needs a password, not UUID.
+         new_acc.password = password if password else str(uuid.uuid4())[:16]
+         new_acc.port = 443 # If using Xray 443 inbound
+         # We'll treat SS as Xray user if supported, or SSH if using separate libev.
+         # For now, let's treat it as SSH tunneling SS or separate implementation.
+         # Let's assume standalone SS for now or Xray.
+         # Given 'vpn_utils' handles 'add_xray_user', let's try to add it to Xray if 'ss' protocol is configured there.
+         # Note: Xray SS clients usually use 'password' field.
+         # The add_xray_user function needs to handle 'ss' specifically if we want to use Xray.
+         # For now, let's just save to DB and pretend success if we didn't implement SS specific logic yet,
+         # OR better, map it to SSH if it's meant to be SSH-tunneled SS.
+         # Let's assume Xray SS.
+         if VPNManager.add_xray_user('shadowsocks', username, new_acc.password):
+             success = True
+
+    if success:
+        db.session.add(new_acc)
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'{acc_type.upper()} Account created'})
+    else:
+        return jsonify({'success': False, 'message': 'Failed to create system account'}), 500
 
 @app.route('/api/account/list')
 @login_required
@@ -291,6 +322,12 @@ def list_accounts():
 def delete_account(id):
     acc = VPNAccount.query.get(id)
     if acc and acc.user_id == current_user.id:
+        # Remove system account
+        if acc.account_type == 'ssh':
+            VPNManager.delete_ssh_user(acc.username)
+        elif acc.account_type in ['vmess', 'vless', 'trojan', 'ss']:
+            VPNManager.remove_xray_user(acc.account_type if acc.account_type != 'ss' else 'shadowsocks', acc.username)
+
         db.session.delete(acc)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Account deleted'})
