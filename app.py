@@ -8,6 +8,7 @@ import subprocess
 import uuid
 import json
 import base64
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'diana-vpn-secret-key-change-me')
@@ -184,18 +185,30 @@ def create_account():
     acc_type = data.get('type')
     username = data.get('username')
     password = data.get('password')
+    duration = data.get('duration')
 
     if not username:
         return jsonify({'success': False, 'message': 'Username required'}), 400
+
+    if not duration:
+        duration = 30
+    else:
+        try:
+            duration = int(duration)
+        except:
+            duration = 30
 
     # Check if username exists for this type
     if VPNAccount.query.filter_by(username=username, account_type=acc_type).first():
          return jsonify({'success': False, 'message': 'Username already exists'}), 400
 
+    expiry_date = datetime.utcnow() + timedelta(days=duration)
+
     new_acc = VPNAccount(
         user_id=current_user.id,
         account_type=acc_type,
-        username=username
+        username=username,
+        expiry=expiry_date
     )
 
     # Mock Logic for different types
@@ -206,7 +219,7 @@ def create_account():
         new_acc.uuid = str(uuid.uuid4())
         new_acc.port = 443
         new_acc.protocol = 'ws' # default to ws tls as requested
-        new_acc.domain = 'example.com'
+        # new_acc.domain = 'example.com'
 
     db.session.add(new_acc)
     db.session.commit()
@@ -267,7 +280,8 @@ def list_accounts():
             'id': acc.id,
             'username': acc.username,
             'details': details,
-            'links': links
+            'links': links,
+            'expiry': acc.expiry.strftime('%Y-%m-%d') if acc.expiry else 'N/A'
         })
 
     return jsonify({'accounts': acc_list})

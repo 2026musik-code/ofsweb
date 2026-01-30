@@ -283,6 +283,15 @@
                     <label>Password</label>
                     <input type="text" class="form-control" id="ssh-pass">
                 </div>
+                <div class="form-group">
+                    <label>Duration</label>
+                    <select class="form-control" id="ssh-duration">
+                        <option value="3">3 Days</option>
+                        <option value="7">7 Days</option>
+                        <option value="15">15 Days</option>
+                        <option value="30" selected>30 Days</option>
+                    </select>
+                </div>
                 <button class="btn" onclick="createAccount('ssh')">Create SSH</button>
             </div>
             <div class="card">
@@ -298,6 +307,15 @@
                     <label>Username</label>
                     <input type="text" class="form-control" id="vmess-user">
                 </div>
+                <div class="form-group">
+                    <label>Duration</label>
+                    <select class="form-control" id="vmess-duration">
+                        <option value="3">3 Days</option>
+                        <option value="7">7 Days</option>
+                        <option value="15">15 Days</option>
+                        <option value="30" selected>30 Days</option>
+                    </select>
+                </div>
                 <button class="btn" onclick="createAccount('vmess')">Create VMESS</button>
             </div>
             <div class="card">
@@ -309,6 +327,15 @@
         <div id="vless" class="section">
             <div class="card"><h2>Manage VLESS</h2>
             <div class="form-group"><label>Username</label><input type="text" class="form-control" id="vless-user"></div>
+            <div class="form-group">
+                <label>Duration</label>
+                <select class="form-control" id="vless-duration">
+                    <option value="3">3 Days</option>
+                    <option value="7">7 Days</option>
+                    <option value="15">15 Days</option>
+                    <option value="30" selected>30 Days</option>
+                </select>
+            </div>
             <button class="btn" onclick="createAccount('vless')">Create VLESS</button></div>
             <div class="card"><h3>Active VLESS Accounts</h3><div id="vless-list">Loading...</div></div>
         </div>
@@ -316,6 +343,15 @@
         <div id="trojan" class="section">
             <div class="card"><h2>Manage TROJAN</h2>
             <div class="form-group"><label>Username</label><input type="text" class="form-control" id="trojan-user"></div>
+            <div class="form-group">
+                <label>Duration</label>
+                <select class="form-control" id="trojan-duration">
+                    <option value="3">3 Days</option>
+                    <option value="7">7 Days</option>
+                    <option value="15">15 Days</option>
+                    <option value="30" selected>30 Days</option>
+                </select>
+            </div>
             <button class="btn" onclick="createAccount('trojan')">Create TROJAN</button></div>
             <div class="card"><h3>Active TROJAN Accounts</h3><div id="trojan-list">Loading...</div></div>
         </div>
@@ -324,6 +360,15 @@
             <div class="card"><h2>Manage SHADOWSOCKS</h2>
             <div class="form-group"><label>Username</label><input type="text" class="form-control" id="ss-user"></div>
              <div class="form-group"><label>Password</label><input type="text" class="form-control" id="ss-pass"></div>
+             <div class="form-group">
+                <label>Duration</label>
+                <select class="form-control" id="ss-duration">
+                    <option value="3">3 Days</option>
+                    <option value="7">7 Days</option>
+                    <option value="15">15 Days</option>
+                    <option value="30" selected>30 Days</option>
+                </select>
+            </div>
             <button class="btn" onclick="createAccount('ss')">Create SS</button></div>
             <div class="card"><h3>Active SS Accounts</h3><div id="ss-list">Loading...</div></div>
         </div>
@@ -411,6 +456,7 @@
         async function createAccount(type) {
             const user = document.getElementById(type + '-user').value;
             const pass = document.getElementById(type + '-pass') ? document.getElementById(type + '-pass').value : null;
+            const duration = document.getElementById(type + '-duration') ? document.getElementById(type + '-duration').value : 30;
 
             if(!user) return showToast('Username required', 'error');
 
@@ -418,7 +464,7 @@
                 const res = await fetch('/api/account/create', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({type, username: user, password: pass})
+                    body: JSON.stringify({type, username: user, password: pass, duration: parseInt(duration)})
                 });
                 const data = await res.json();
                 if(data.success) {
@@ -441,19 +487,22 @@
                     return;
                 }
 
-                let html = '<table><thead><tr><th>Username</th><th>Details</th><th>Links</th><th>Action</th></tr></thead><tbody>';
+                let html = '<table><thead><tr><th>Username</th><th>Expiry</th><th>Details</th><th>Links</th><th>Action</th></tr></thead><tbody>';
                 data.accounts.forEach(acc => {
                     let linkButtons = '';
                     if(acc.links && acc.links.tls) {
                         linkButtons += `<button class="btn" style="padding:5px 10px; margin-right:5px; font-size:0.8rem;" onclick="copyToClipboard('${acc.links.tls}')">Copy TLS</button>`;
+                        linkButtons += `<button class="btn" style="padding:5px 10px; margin-right:5px; font-size:0.8rem; background:#4b76a2;" onclick="prompt('TLS Link:', '${acc.links.tls}')">View TLS</button>`;
                     }
                     if(acc.links && acc.links.nontls) {
                         linkButtons += `<button class="btn" style="padding:5px 10px; margin-right:5px; font-size:0.8rem; background:#4b76a2;" onclick="copyToClipboard('${acc.links.nontls}')">Copy NTLS</button>`;
+                        linkButtons += `<button class="btn" style="padding:5px 10px; margin-right:5px; font-size:0.8rem; background:#4b76a2;" onclick="prompt('NTLS Link:', '${acc.links.nontls}')">View NTLS</button>`;
                     }
                     if(!linkButtons) linkButtons = '-';
 
                     html += `<tr>
                         <td>${escapeHtml(acc.username)}</td>
+                        <td>${escapeHtml(acc.expiry)}</td>
                         <td>${escapeHtml(acc.details)}</td>
                         <td>${linkButtons}</td>
                         <td><button class="btn btn-danger" onclick="deleteAccount(${acc.id}, '${type}')">Delete</button></td>
