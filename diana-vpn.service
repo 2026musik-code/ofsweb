@@ -1,0 +1,13 @@
+[Unit]
+Description=DIANA VPN Web Panel
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/ofsweb
+ExecStart=/usr/bin/python3 /root/ofsweb/app.py
+Restart=always
+Environment="FLASK_ENV=production"
+
+[Install]
+WantedBy=multi-user.target
