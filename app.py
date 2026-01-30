@@ -170,8 +170,12 @@ def manage_domain():
 @login_required
 def update_system():
     try:
+        # Ensure remote is correct
+        repo_url = "https://github.com/2026musik-code/ofsweb"
+        subprocess.run(['git', 'remote', 'set-url', 'origin', repo_url], check=False)
+
         # Pull latest changes from git
-        result = subprocess.run(['git', 'pull'], capture_output=True, text=True)
+        result = subprocess.run(['git', 'pull', 'origin', 'main'], capture_output=True, text=True)
         if result.returncode == 0:
             return jsonify({'success': True, 'message': 'System updated successfully. Restarting service recommended.'})
         else:
@@ -215,6 +219,11 @@ def create_account():
     # Logic for different types
     success = False
 
+    # Get system domain for link generation logic later if needed
+    sys_config = SystemConfig.query.get('domain')
+    system_domain = sys_config.value if sys_config else 'localhost'
+    new_acc.domain = system_domain
+
     if acc_type == 'ssh':
         new_acc.password = password
         new_acc.port = 22
@@ -225,7 +234,6 @@ def create_account():
         new_acc.uuid = str(uuid.uuid4())
         new_acc.port = 443
         new_acc.protocol = 'ws'
-        # new_acc.domain is set by default or handled elsewhere
 
         # Determine protocol tag for Xray (simple mapping)
         # Assuming vpn_utils handles the tag finding based on protocol
@@ -233,20 +241,9 @@ def create_account():
             success = True
 
     elif acc_type == 'ss':
-         # Shadowsocks can be SSH-based (libev) or Xray-based.
-         # Assuming Xray Shadowsocks for simplicity as per requirement "Xray dan mesin lainya"
-         # But usually SS needs a password, not UUID.
+         # Shadowsocks via Xray
          new_acc.password = password if password else str(uuid.uuid4())[:16]
-         new_acc.port = 443 # If using Xray 443 inbound
-         # We'll treat SS as Xray user if supported, or SSH if using separate libev.
-         # For now, let's treat it as SSH tunneling SS or separate implementation.
-         # Let's assume standalone SS for now or Xray.
-         # Given 'vpn_utils' handles 'add_xray_user', let's try to add it to Xray if 'ss' protocol is configured there.
-         # Note: Xray SS clients usually use 'password' field.
-         # The add_xray_user function needs to handle 'ss' specifically if we want to use Xray.
-         # For now, let's just save to DB and pretend success if we didn't implement SS specific logic yet,
-         # OR better, map it to SSH if it's meant to be SSH-tunneled SS.
-         # Let's assume Xray SS.
+         new_acc.port = 443
          if VPNManager.add_xray_user('shadowsocks', username, new_acc.password):
              success = True
 

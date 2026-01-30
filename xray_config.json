@@ -55,6 +55,7 @@
       "listen": "127.0.0.1",
       "protocol": "shadowsocks",
       "settings": {
+        "method": "aes-256-gcm",
         "clients": [],
         "network": "tcp,udp"
       },
