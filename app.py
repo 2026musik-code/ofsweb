@@ -264,8 +264,10 @@ def create_account():
         new_acc.port = 443
         new_acc.protocol = 'ws'
 
-        # Determine protocol tag for Xray (simple mapping)
-        # Assuming vpn_utils handles the tag finding based on protocol
+        # Add to Xray (Dual Mode: XTLS + WS)
+        # For VLESS, we might want to add to both 'vless_xtls' and 'vless_ws' inbounds.
+        # VPNManager currently adds to all inbounds matching protocol or tag.
+        # Since our tags are vless_xtls and vless_ws, and protocol is vless, it should add to both!
         if VPNManager.add_xray_user(acc_type, username, new_acc.uuid):
             success = True
 
@@ -306,11 +308,63 @@ def list_accounts():
         else:
             # --- Link Generation ---
             if acc.account_type == 'vless':
-                # TLS
-                links['tls'] = f"vless://{acc.uuid}@{domain}:443?security=tls&encryption=none&headerType=none&type=ws&host={domain}&sni={domain}&path=/vless#{acc.username}"
-                # Non-TLS
-                links['nontls'] = f"vless://{acc.uuid}@{domain}:80?security=none&encryption=none&headerType=none&type=ws&host={domain}&path=/vless#{acc.username}"
-                details = f"UUID: {acc.uuid}"
+                # XTLS-Vision (Direct TCP) - Port 443
+                links['xtls'] = f"vless://{acc.uuid}@{domain}:443?security=tls&encryption=none&type=tcp&flow=xtls-rprx-vision&sni={domain}#{acc.username}_xtls"
+                # WS (Via Fallback) - Port 443
+                links['ws'] = f"vless://{acc.uuid}@{domain}:443?security=tls&encryption=none&type=ws&host={domain}&sni={domain}&path=/vless#{acc.username}_ws"
+                # Non-TLS (Standard Port 80 Nginx)
+                links['nontls'] = f"vless://{acc.uuid}@{domain}:80?security=none&encryption=none&type=ws&host={domain}&path=/vless#{acc.username}_nontls"
+
+                # Consolidate for UI (Mapping 'tls' key to XTLS or WS? Let's use XTLS as primary 'tls' for speed)
+                links['tls'] = links['xtls']
+                # We can add a new key for secondary TLS or just overwrite.
+                # Let's keep 'tls' as XTLS for best performance, and maybe add 'ws_tls' key?
+                # The frontend expects 'tls' and 'nontls'. Let's override 'tls' with XTLS link as it is superior.
+                # But user might want WS for CDN.
+                # Let's create a combined details string or put WS link in details.
+                # Actually, let's just expose both if UI supports it, but UI is fixed.
+                # Let's use WS as default 'tls' for compatibility (CDN support) and provide XTLS link in 'details' or separate button?
+                # User asked for XTLS. Let's make 'tls' = XTLS.
+                links['tls'] = links['xtls']
+                details = f"UUID: {acc.uuid} | WS Link available via Copy"
+                # Note: To fully support both in UI, we might need to change UI.
+                # For now, let's swap 'tls' to be the WS TLS link (safer fallback) and put XTLS in 'details' or new field?
+                # Actually, user wants XTLS for low ping.
+                # Let's stick to the plan: Implement Dual Mode.
+                # Let's update frontend to show "Copy XTLS" and "Copy WS" if possible?
+                # Plan didn't say update frontend for new buttons.
+                # Let's put XTLS in 'tls' key (Primary) and WS TLS in 'nontls' key? No, that's confusing.
+                # Let's add a new key 'xtls' and update frontend later if needed.
+                # For now, let's assume 'tls' is the WS one (standard) and we append XTLS link to 'details' text for easy access?
+                # Better: 'tls' = WS (Safe, CDN), 'xtls' = Vision.
+                # The UI only shows Copy TLS / Copy NTLS.
+                # Let's overwrite 'tls' with the WS one (more compatible) and put the XTLS link in the 'details' popup/field?
+                # Wait, user explicitly asked for "Ping Kecil" (XTLS).
+                # Let's replace 'tls' with the XTLS link.
+                links['tls'] = links['xtls']
+
+                # But we need WS for "Bug".
+                # Let's repurpose 'nontls' to be 'ws_tls'? No, user needs port 80 for some tricks.
+                # Let's just append the WS TLS link to the 'ssh_details' equivalent or similar?
+                # Or just construct a new 'vless_details' string like SSH.
+                vless_details = f"""
+================================
+       VLESS ACCOUNT
+================================
+Domain    : {domain}
+UUID      : {acc.uuid}
+================================
+LINK XTLS-VISION (Direct/Low Ping):
+{links['xtls']}
+
+LINK WS TLS (CDN/Cloudflare):
+{links['ws']}
+
+LINK WS NON-TLS:
+{links['nontls']}
+================================
+""".strip()
+                details = f"UUID: {acc.uuid}" # Short detail
 
             elif acc.account_type == 'vmess':
                 # TLS
@@ -372,12 +426,17 @@ GET / HTTP/1.1[crlf]Host: {domain}[crlf]Upgrade: websocket[crlf][crlf]
 ================================
 """.strip()
 
+        # Helper for other protocols to have details view if needed (like VLESS)
+        full_details = ssh_details
+        if acc.account_type == 'vless' and 'vless_details' in locals():
+            full_details = vless_details
+
         acc_list.append({
             'id': acc.id,
             'username': acc.username,
             'details': details,
             'links': links,
-            'ssh_details': ssh_details,
+            'ssh_details': full_details, # Reusing this field name for the Modal logic in frontend
             'expiry': acc.expiry.strftime('%Y-%m-%d') if acc.expiry else 'N/A'
         })
 
