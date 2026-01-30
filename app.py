@@ -136,6 +136,35 @@ def reject_user(id):
         return jsonify({'success': True, 'message': 'User rejected/deleted'})
     return jsonify({'success': False, 'message': 'User not found'}), 404
 
+@app.route('/api/admin/edit_user/<int:id>', methods=['POST'])
+@login_required
+def edit_user(id):
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+
+    data = request.json
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+
+    user = User.query.get(id)
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    if name:
+        user.name = name
+    if email:
+        # Check if email taken by other
+        existing = User.query.filter_by(email=email).first()
+        if existing and existing.id != id:
+            return jsonify({'success': False, 'message': 'Email already taken'}), 400
+        user.email = email
+    if password:
+        user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'User updated successfully'})
+
 @app.route('/api/stats')
 @login_required
 def get_stats():
@@ -269,46 +298,86 @@ def list_accounts():
         details = ""
         links = {}
 
-        if acc.account_type in ['ssh', 'ss']:
-            details = f"Pass: {acc.password}, Port: {acc.port}"
-        else:
-            # Use stored domain if account domain is default/placeholder, otherwise use account specific if implemented
-            domain = system_domain
+        # Determine domain for this account
+        domain = acc.domain if acc.domain and acc.domain != 'example.com' else system_domain
 
+        if acc.account_type in ['ssh', 'ss']:
+             details = f"Pass: {acc.password}"
+        else:
             # --- Link Generation ---
             if acc.account_type == 'vless':
                 # TLS
-                links['tls'] = f"vless://{acc.uuid}@{domain}:443?security=tls&encryption=none&headerType=none&type=ws&host={domain}&sni={domain}#{acc.username}"
+                links['tls'] = f"vless://{acc.uuid}@{domain}:443?security=tls&encryption=none&headerType=none&type=ws&host={domain}&sni={domain}&path=/vless#{acc.username}"
                 # Non-TLS
-                links['nontls'] = f"vless://{acc.uuid}@{domain}:80?security=none&encryption=none&headerType=none&type=ws&host={domain}#{acc.username}"
+                links['nontls'] = f"vless://{acc.uuid}@{domain}:80?security=none&encryption=none&headerType=none&type=ws&host={domain}&path=/vless#{acc.username}"
                 details = f"UUID: {acc.uuid}"
 
             elif acc.account_type == 'vmess':
                 # TLS
                 vmess_tls = {
                     "v": "2", "ps": acc.username, "add": domain, "port": "443", "id": acc.uuid,
-                    "aid": "0", "net": "ws", "type": "none", "host": domain, "path": "/", "tls": "tls"
+                    "aid": "0", "net": "ws", "type": "none", "host": domain, "path": "/vmess", "tls": "tls"
                 }
                 # Non-TLS
                 vmess_nontls = {
                     "v": "2", "ps": acc.username, "add": domain, "port": "80", "id": acc.uuid,
-                    "aid": "0", "net": "ws", "type": "none", "host": domain, "path": "/", "tls": "none"
+                    "aid": "0", "net": "ws", "type": "none", "host": domain, "path": "/vmess", "tls": "none"
                 }
                 links['tls'] = "vmess://" + base64.b64encode(json.dumps(vmess_tls).encode('utf-8')).decode('utf-8')
                 links['nontls'] = "vmess://" + base64.b64encode(json.dumps(vmess_nontls).encode('utf-8')).decode('utf-8')
                 details = f"UUID: {acc.uuid}"
 
             elif acc.account_type == 'trojan':
-                links['tls'] = f"trojan://{acc.uuid}@{domain}:443?security=tls&headerType=none&type=ws&host={domain}&sni={domain}#{acc.username}"
+                links['tls'] = f"trojan://{acc.uuid}@{domain}:443?security=tls&headerType=none&type=ws&host={domain}&sni={domain}&path=/trojan#{acc.username}"
                 # Trojan typically implies TLS, but for consistency in structure:
-                links['nontls'] = f"trojan://{acc.uuid}@{domain}:80?security=none&headerType=none&type=ws&host={domain}#{acc.username}"
+                links['nontls'] = f"trojan://{acc.uuid}@{domain}:80?security=none&headerType=none&type=ws&host={domain}&path=/trojan#{acc.username}"
                 details = f"Password/UUID: {acc.uuid}"
+
+            elif acc.account_type == 'ss':
+                # SS usually simpler, but assuming WS path via plugin param or just raw info
+                # Xray SS with WS
+                # ss://method:password@domain:443?plugin=v2ray-plugin%3Bmode%3Dwebsocket%3Bhost%3Ddomain%3Bpath%3D%2Fss%3Btls
+                method = "aes-256-gcm"
+                user_info = base64.b64encode(f"{method}:{acc.password}".encode()).decode().strip()
+                plugin_tls = f"v2ray-plugin;mode=websocket;host={domain};path=/ss;tls"
+                plugin_nontls = f"v2ray-plugin;mode=websocket;host={domain};path=/ss"
+
+                links['tls'] = f"ss://{user_info}@{domain}:443?plugin={plugin_tls}#{acc.username}"
+                links['nontls'] = f"ss://{user_info}@{domain}:80?plugin={plugin_nontls}#{acc.username}"
+                details = f"Pass: {acc.password}"
+
+        ssh_details = ""
+        if acc.account_type == 'ssh':
+             ssh_details = f"""
+================================
+       SSH ACCOUNT DETAILS
+================================
+Domain         : {domain}
+Username       : {acc.username}
+Password       : {acc.password}
+Created        : {acc.created_at.strftime('%Y-%m-%d')}
+Expired        : {acc.expiry.strftime('%Y-%m-%d') if acc.expiry else 'N/A'}
+================================
+Port OpenSSH   : 22
+Port Dropbear  : 109, 143
+Port SSL/TLS   : 443
+Port WS HTTP   : 80
+Port WS HTTPS  : 443
+================================
+Payload WS (No TLS):
+GET / HTTP/1.1[crlf]Host: {domain}[crlf]Upgrade: websocket[crlf][crlf]
+
+Payload WS (TLS):
+GET / HTTP/1.1[crlf]Host: {domain}[crlf]Upgrade: websocket[crlf][crlf]
+================================
+""".strip()
 
         acc_list.append({
             'id': acc.id,
             'username': acc.username,
             'details': details,
             'links': links,
+            'ssh_details': ssh_details,
             'expiry': acc.expiry.strftime('%Y-%m-%d') if acc.expiry else 'N/A'
         })
 
