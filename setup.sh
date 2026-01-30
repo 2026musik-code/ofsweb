@@ -52,6 +52,9 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 
+    # Global Tuning
+    tcp_nodelay on;
+
     location /vless {
         proxy_redirect off;
         proxy_pass http://127.0.0.1:10001;
@@ -59,6 +62,12 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
+
+        # Low Latency Tuning
+        proxy_buffering off;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400;
     }
 
     location /vmess {
@@ -68,6 +77,12 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
+
+        # Low Latency Tuning
+        proxy_buffering off;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400;
     }
 
     location /trojan {
@@ -77,6 +92,12 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
+
+        # Low Latency Tuning
+        proxy_buffering off;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400;
     }
 
     location /ss {
@@ -86,6 +107,12 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
+
+        # Low Latency Tuning
+        proxy_buffering off;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400;
     }
 }
 EOF
