@@ -109,7 +109,17 @@ class VPNManager:
                 clients = settings.get('clients', [])
 
                 # Check if user exists
-                if any(c.get('email') == username for c in clients):
+                # For Shadowsocks, usually 'password' is used, not 'email' in standard clients list for simple auth
+                # But Xray 2020+ supports "password", "method" in clients
+
+                check_key = 'email'
+                if protocol == 'shadowsocks':
+                    # Shadowsocks clients usually look like: {"method": "...", "password": "..."}
+                    # We might not have email field there.
+                    # Let's check password as key
+                    check_key = 'password'
+
+                if any(c.get(check_key) == (uuid if check_key == 'password' else username) for c in clients):
                     print(f"User {username} already exists in {protocol}")
                     continue
 
@@ -121,10 +131,15 @@ class VPNManager:
                 # Protocol specific fields
                 if protocol == 'vmess':
                     new_client['alterId'] = 0
-                if protocol == 'trojan':
+                elif protocol == 'trojan':
                     new_client['password'] = uuid
-                    del new_client['id'] # Trojan uses password, not id in some configs, or structure differs.
-                    # Standard Xray Trojan: "clients": [ { "password": "...", "email": "..." } ]
+                    del new_client['id']
+                elif protocol == 'shadowsocks':
+                    new_client = {
+                        "password": uuid, # In our app logic, we passed password/uuid here
+                        "email": username,
+                        "method": "aes-256-gcm" # Default method
+                    }
 
                 clients.append(new_client)
                 settings['clients'] = clients
@@ -156,6 +171,8 @@ class VPNManager:
                 clients = settings.get('clients', [])
 
                 initial_len = len(clients)
+                # Filter out based on email for most, or password for SS if email missing?
+                # We added email to SS client above, so we can filter by email.
                 clients = [c for c in clients if c.get('email') != username]
 
                 if len(clients) < initial_len:
