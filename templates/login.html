@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login DIANA VPN</title>
+
+    <!-- Import Font: Outfit (Modern Sans Serif) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Import Icons: FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --accent-gold: #ffd700;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-color: #ffffff;
+            --text-muted: #a0a0a0;
+            --error-color: #ff4b4b;
+            --success-color: #00d26a;
+            --transition-speed: 0.5s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: #0f0c29;
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Mencegah scrollbar saat animasi */
+            position: relative;
+        }
+
+        /* Canvas Background */
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Container Utama Glassmorphism */
+        .container {
+            position: relative;
+            width: 850px;
+            height: 550px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            z-index: 10;
+            transition: transform 0.3s ease;
+        }
+
+        /* Layout Form */
+        .form-container {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            transition: all var(--transition-speed) ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 50px;
+            text-align: center;
+        }
+
+        .sign-in-container {
+            left: 0;
+            width: 50%;
+            z-index: 2;
+        }
+
+        .sign-up-container {
+            left: 0;
+            width: 50%;
+            opacity: 0;
+            z-index: 1;
+        }
+
+        /* Animasi Panel Bergerak */
+        .container.right-panel-active .sign-in-container {
+            transform: translateX(100%);
+            opacity: 0;
+            z-index: 1;
+        }
+
+        .container.right-panel-active .sign-up-container {
+            transform: translateX(100%);
+            opacity: 1;
+            z-index: 5;
+            animation: show 0.6s;
+        }
+
+        @keyframes show {
+            0%, 49.99% { opacity: 0; z-index: 1; }
+            50%, 100% { opacity: 1; z-index: 5; }
+        }
+
+        /* Overlay Panel (Bagian Berwarna) */
+        .overlay-container {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 50%;
+            height: 100%;
+            overflow: hidden;
+            transition: transform var(--transition-speed) ease-in-out;
+            z-index: 100;
+            border-radius: 0 20px 20px 0;
+        }
+
+        .container.right-panel-active .overlay-container {
+            transform: translateX(-100%);
+            border-radius: 20px 0 0 20px;
+        }
+
+        .overlay {
+            background: var(--primary-gradient);
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position: 0 0;
+            color: #ffffff;
+            position: relative;
+            left: -100%;
+            height: 100%;
+            width: 200%;
+            transform: translateX(0);
+            transition: transform var(--transition-speed) ease-in-out;
+        }
+
+        .container.right-panel-active .overlay {
+            transform: translateX(50%);
+        }
+
+        .overlay-panel {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 40px;
+            text-align: center;
+            top: 0;
+            height: 100%;
+            width: 50%;
+            transform: translateX(0);
+            transition: transform var(--transition-speed) ease-in-out;
+        }
+
+        .overlay-left {
+            transform: translateX(-20%);
+        }
+
+        .container.right-panel-active .overlay-left {
+            transform: translateX(0);
+        }
+
+        .overlay-right {
+            right: 0;
+            transform: translateX(0);
+        }
+
+        .container.right-panel-active .overlay-right {
+            transform: translateX(20%);
+        }
+
+        /* Tipografi */
+        h1 {
+            font-weight: 700;
+            margin: 0;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            letter-spacing: 1px;
+        }
+
+        p {
+            font-size: 14px;
+            font-weight: 300;
+            line-height: 20px;
+            letter-spacing: 0.5px;
+            margin: 20px 0 30px;
+            color: var(--text-muted);
+        }
+
+        .overlay p {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        span {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+
+        /* Input Styles */
+        .input-group {
+            position: relative;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        input {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: none;
+            padding: 12px 15px;
+            padding-left: 40px; /* Space for icon */
+            width: 100%;
+            border-radius: 8px;
+            outline: none;
+            color: #fff;
+            font-size: 14px;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        input::placeholder {
+            color: transparent; /* Hide default placeholder */
+        }
+
+        input:focus {
+            border-color: #764ba2;
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 10px rgba(118, 75, 162, 0.3);
+        }
+
+        /* Floating Label Logic */
+        .input-label {
+            position: absolute;
+            left: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+            pointer-events: none;
+            transition: 0.3s ease all;
+        }
+
+        input:focus ~ .input-label,
+        input:not(:placeholder-shown) ~ .input-label {
+            top: 0;
+            left: 10px;
+            transform: translateY(-50%) scale(0.85);
+            background-color: #24243e; /* Matches card bg roughly */
+            padding: 0 5px;
+            color: #764ba2;
+            font-weight: 600;
+            border-radius: 4px;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            transition: 0.3s;
+        }
+
+        input:focus ~ .input-icon {
+            color: #764ba2;
+        }
+
+        /* Password Toggle */
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .toggle-password:hover {
+            color: #fff;
+        }
+
+        /* Buttons */
+        button {
+            border-radius: 50px;
+            border: 1px solid var(--accent-gold);
+            background-color: transparent;
+            color: var(--accent-gold);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 12px 45px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: transform 80ms ease-in, background 0.3s, color 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button:focus {
+            outline: none;
+        }
+
+        button.ghost {
+            background-color: transparent;
+            border-color: #ffffff;
+            color: #ffffff;
+        }
+
+        button.ghost:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        button.main-btn {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button.main-btn:hover {
+            box-shadow: 0 0 20px rgba(118, 75, 162, 0.6);
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Social Icons */
+        .social-container {
+            margin: 20px 0;
+        }
+
+        .social-container a {
+            border: 1px solid #dddddd;
+            border-radius: 50%;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 5px;
+            height: 40px;
+            width: 40px;
+            color: #fff;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .social-container a:hover {
+            background: #fff;
+            color: #333;
+            transform: rotate(360deg);
+        }
+
+        /* Toast Notification */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: rgba(15, 12, 41, 0.9);
+            border-left: 4px solid;
+            color: #fff;
+            padding: 15px 25px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: slideIn 0.5s ease forwards;
+            min-width: 250px;
+        }
+
+        .toast.success { border-color: var(--success-color); }
+        .toast.error { border-color: var(--error-color); }
+
+        .toast i { margin-right: 10px; font-size: 1.2rem; }
+        .toast.success i { color: var(--success-color); }
+        .toast.error i { color: var(--error-color); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        button.loading .spinner { display: inline-block; }
+        button.loading span { display: none; } /* Hide text if needed, or keep it */
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+                border: none;
+                flex-direction: column;
+            }
+
+            .overlay-container {
+                display: none; /* Hide overlay animation on mobile for simplicity */
+            }
+
+            .sign-in-container, .sign-up-container {
+                width: 100%;
+                height: auto;
+                position: relative;
+                top: auto;
+                left: auto;
+                opacity: 1;
+                transform: none !important;
+                padding: 40px;
+                display: none; /* Manage display via JS for mobile */
+            }
+
+            .sign-in-container.mobile-active { display: flex; }
+            .sign-up-container.mobile-active { display: flex; }
+
+            .mobile-toggle {
+                display: block;
+                margin-top: 20px;
+                color: #fff;
+                cursor: pointer;
+                text-decoration: underline;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-toggle { display: none; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Canvas Background -->
+    <canvas id="particles-js"></canvas>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Main Card -->
+    <div class="container" id="container">
+
+        <!-- Sign Up Form -->
+        <div class="form-container sign-up-container" id="signUpFormContainer">
+            <form id="signUpForm">
+                <h1>Buat Akun</h1>
+                <div class="social-container">
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" aria-label="Google"><i class="fab fa-google-plus-g"></i></a>
+                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+                <span>atau gunakan email untuk pendaftaran</span>
+
+                <div class="input-group">
+                    <i class="fas fa-user input-icon"></i>
+                    <input type="text" placeholder="Nama Lengkap" required id="regName">
+                    <label class="input-label">Nama Lengkap</label>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" placeholder="Email" required id="regEmail">
+                    <label class="input-label">Email</label>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" placeholder="Kata Sandi" required id="regPass">
+                    <label class="input-label">Kata Sandi</label>
+                    <i class="fas fa-eye toggle-password" onclick="togglePassword('regPass', this)"></i>
+                </div>
+
+                <button type="submit" class="main-btn">
+                    <div class="spinner"></div>
+                    <span>Daftar</span>
+                </button>
+
+                <div class="mobile-toggle" onclick="showLoginMobile()">Sudah punya akun? Masuk</div>
+            </form>
+        </div>
+
+        <!-- Sign In Form -->
+        <div class="form-container sign-in-container mobile-active" id="signInFormContainer">
+            <form id="signInForm">
+                <h1>Masuk</h1>
+                <div class="social-container">
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" aria-label="Google"><i class="fab fa-google-plus-g"></i></a>
+                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+                <span>atau gunakan akun anda</span>
+
+                <div class="input-group">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" placeholder="Email" required id="loginEmail" value="">
+                    <label class="input-label">Email</label>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" placeholder="Kata Sandi" required id="loginPass" value="">
+                    <label class="input-label">Kata Sandi</label>
+                    <i class="fas fa-eye toggle-password" onclick="togglePassword('loginPass', this)"></i>
+                </div>
+
+                <a href="#" style="color: #333; font-size: 12px; text-decoration: none; margin: 10px 0; color: #ddd;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#ddd'">Lupa kata sandi Anda?</a>
+
+                <button type="submit" class="main-btn">
+                    <div class="spinner"></div>
+                    <span>Masuk</span>
+                </button>
+
+                <div class="mobile-toggle" onclick="showRegisterMobile()">Belum punya akun? Daftar</div>
+            </form>
+        </div>
+
+        <!-- Overlay Container -->
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <h1>Selamat Datang Kembali!</h1>
+                    <p>Untuk tetap terhubung dengan kami, silakan masuk dengan info pribadi Anda</p>
+                    <button class="ghost" id="signIn">Masuk</button>
+                </div>
+                <div class="overlay-panel overlay-right">
+                    <h1>Halo, Teman!</h1>
+                    <p>Masukkan detail pribadi Anda dan mulailah perjalanan bersama kami</p>
+                    <button class="ghost" id="signUp">Daftar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Canvas Particle Background Animation ---
+        const canvas = document.getElementById('particles-js');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particlesArray;
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            init();
+        });
+
+        // Mouse Interaction
+        const mouse = {
+            x: null,
+            y: null,
+            radius: 150
+        }
+
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = event.x;
+            mouse.y = event.y;
+        });
+
+        // Create Particle Class
+        class Particle {
+            constructor(x, y, directionX, directionY, size, color) {
+                this.x = x;
+                this.y = y;
+                this.directionX = directionX;
+                this.directionY = directionY;
+                this.size = size;
+                this.color = color;
+            }
+
+            // Draw individual particle
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+            }
+
+            // Update particle position
+            update() {
+                // Check if particle is still within canvas
+                if (this.x > canvas.width || this.x < 0) {
+                    this.directionX = -this.directionX;
+                }
+                if (this.y > canvas.height || this.y < 0) {
+                    this.directionY = -this.directionY;
+                }
+
+                // Check collision detection - mouse position / particle position
+                let dx = mouse.x - this.x;
+                let dy = mouse.y - this.y;
+                let distance = Math.sqrt(dx*dx + dy*dy);
+
+                if (distance < mouse.radius + this.size) {
+                    if (mouse.x < this.x && this.x < canvas.width - this.size * 10) {
+                        this.x += 2;
+                    }
+                    if (mouse.x > this.x && this.x > this.size * 10) {
+                        this.x -= 2;
+                    }
+                    if (mouse.y < this.y && this.y < canvas.height - this.size * 10) {
+                        this.y += 2;
+                    }
+                    if (mouse.y > this.y && this.y > this.size * 10) {
+                        this.y -= 2;
+                    }
+                }
+
+                // Move particle
+                this.x += this.directionX;
+                this.y += this.directionY;
+
+                this.draw();
+            }
+        }
+
+        // Initialize Particles
+        function init() {
+            particlesArray = [];
+            let numberOfParticles = (canvas.height * canvas.width) / 9000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                let size = (Math.random() * 2) + 1;
+                let x = (Math.random() * ((innerWidth - size * 2) - (size * 2)) + size * 2);
+                let y = (Math.random() * ((innerHeight - size * 2) - (size * 2)) + size * 2);
+                let directionX = (Math.random() * 2) - 1; // Speed
+                let directionY = (Math.random() * 2) - 1;
+                let color = '#ffffff';
+
+                particlesArray.push(new Particle(x, y, directionX, directionY, size, color));
+            }
+        }
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, innerWidth, innerHeight);
+
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+            }
+            connect();
+        }
+
+        // Draw lines between particles
+        function connect() {
+            let opacityValue = 1;
+            for (let a = 0; a < particlesArray.length; a++) {
+                for (let b = a; b < particlesArray.length; b++) {
+                    let distance = ((particlesArray[a].x - particlesArray[b].x) * (particlesArray[a].x - particlesArray[b].x)) +
+                                   ((particlesArray[a].y - particlesArray[b].y) * (particlesArray[a].y - particlesArray[b].y));
+
+                    if (distance < (canvas.width/7) * (canvas.height/7)) {
+                        opacityValue = 1 - (distance/20000);
+                        ctx.strokeStyle = 'rgba(255, 255, 255,' + opacityValue + ')';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
+                        ctx.lineTo(particlesArray[b].x, particlesArray[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // Start Animation
+        init();
+        animate();
+
+        // --- 2. UI Logic & Interactivity ---
+
+        // DOM Elements
+        const signUpButton = document.getElementById('signUp');
+        const signInButton = document.getElementById('signIn');
+        const container = document.getElementById('container');
+
+        const signInFormContainer = document.getElementById('signInFormContainer');
+        const signUpFormContainer = document.getElementById('signUpFormContainer');
+
+        // Desktop Panel Switcher
+        signUpButton.addEventListener('click', () => {
+            container.classList.add("right-panel-active");
+        });
+
+        signInButton.addEventListener('click', () => {
+            container.classList.remove("right-panel-active");
+        });
+
+        // Mobile Switcher (Simple class toggling)
+        function showRegisterMobile() {
+            signInFormContainer.classList.remove('mobile-active');
+            signUpFormContainer.classList.add('mobile-active');
+        }
+
+        function showLoginMobile() {
+            signUpFormContainer.classList.remove('mobile-active');
+            signInFormContainer.classList.add('mobile-active');
+        }
+
+        // Password Visibility Toggle
+        function togglePassword(inputId, icon) {
+            const input = document.getElementById(inputId);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                input.type = "password";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
+        }
+
+        // --- 3. Toast Notification System ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+
+            toast.innerHTML = `
+                <i class="fas ${iconClass}"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.5s ease forwards';
+                toast.addEventListener('animationend', () => {
+                    toast.remove();
+                });
+            }, 3000);
+        }
+
+        // --- 4. Form Handling & Validation ---
+
+        async function simulateAuth(event, formType) {
+            event.preventDefault();
+            const form = event.target;
+            const btn = form.querySelector('button[type="submit"]');
+            const inputs = form.querySelectorAll('input');
+
+            let isValid = true;
+            inputs.forEach(input => {
+                if(!input.value) isValid = false;
+            });
+
+            if(!isValid) {
+                showToast('Harap lengkapi semua data.', 'error');
+                return;
+            }
+
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            const endpoint = formType === 'login' ? '/login' : '/register';
+            let data = {};
+
+            if (formType === 'login') {
+                data = {
+                    email: document.getElementById('loginEmail').value,
+                    password: document.getElementById('loginPass').value
+                };
+            } else {
+                data = {
+                    name: document.getElementById('regName').value,
+                    email: document.getElementById('regEmail').value,
+                    password: document.getElementById('regPass').value
+                };
+            }
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                btn.classList.remove('loading');
+                btn.disabled = false;
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    if (formType === 'login') {
+                         setTimeout(() => {
+                            window.location.href = '/dashboard';
+                         }, 1000);
+                    } else {
+                         if(window.innerWidth > 768) {
+                            container.classList.remove("right-panel-active");
+                        } else {
+                            showLoginMobile();
+                        }
+                        form.reset();
+                    }
+                } else {
+                    showToast(result.message, 'error');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                showToast('Terjadi kesalahan koneksi.', 'error');
+            }
+        }
+
+        document.getElementById('signInForm').addEventListener('submit', (e) => simulateAuth(e, 'login'));
+        document.getElementById('signUpForm').addEventListener('submit', (e) => simulateAuth(e, 'signup'));
+
+    </script>
+</body>
+</html>
