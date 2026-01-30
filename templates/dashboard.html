@@ -500,6 +500,15 @@
                     }
                     if(!linkButtons) linkButtons = '-';
 
+                    // SSH Review Button
+                    if(type === 'ssh' && acc.ssh_details) {
+                        // Use a safe way to pass the string, possibly encodeURI or store in a map
+                        // Storing in a global map is safer than escaping for onclick
+                        window.accountDetails = window.accountDetails || {};
+                        window.accountDetails[acc.id] = acc.ssh_details;
+                        linkButtons = `<button class="btn" style="padding:5px 10px; margin-right:5px; font-size:0.8rem; background:#4b76a2;" onclick="showSSHDetails(${acc.id})">Review</button>`;
+                    }
+
                     html += `<tr>
                         <td>${escapeHtml(acc.username)}</td>
                         <td>${escapeHtml(acc.expiry)}</td>
@@ -535,6 +544,34 @@
             } catch(e) { showToast('Error updating domain', 'error'); }
         }
 
+        function showSSHDetails(id) {
+            const details = window.accountDetails[id];
+            // Simple alert for now, or a modal if we had one.
+            // Alert box is hard to copy from. Better use a prompt or a custom modal.
+            // Let's use a textarea in a new overlay/modal for easy copying.
+            createModal('SSH Account Details', `<textarea style="width:100%; height:300px; background:#1a1a2e; color:#fff; border:1px solid #444; padding:10px;">${details}</textarea>`);
+        }
+
+        function createModal(title, content) {
+            let modal = document.getElementById('custom-modal');
+            if(!modal) {
+                modal = document.createElement('div');
+                modal.id = 'custom-modal';
+                modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; display:flex; justify-content:center; align-items:center;';
+                document.body.appendChild(modal);
+            }
+            modal.innerHTML = `
+                <div style="background:#0f0c29; border:1px solid rgba(255,255,255,0.1); padding:20px; border-radius:10px; width:90%; max-width:500px; position:relative;">
+                    <h2 style="margin-top:0;">${title}</h2>
+                    <div style="margin:20px 0;">${content}</div>
+                    <div style="text-align:right;">
+                        <button class="btn" onclick="document.getElementById('custom-modal').style.display='none'">Close</button>
+                    </div>
+                </div>
+            `;
+            modal.style.display = 'flex';
+        }
+
         {% if is_admin %}
         async function loadUsers() {
             const container = document.getElementById('user-list');
@@ -553,6 +590,7 @@
                     if(!u.is_admin) { // Can't delete admin easily to prevent lockout
                          action += `<button class="btn btn-danger" style="padding:5px 10px;" onclick="rejectUser(${u.id})">Delete</button>`;
                     }
+                    action += `<button class="btn" style="padding:5px 10px; margin-left:5px; background:#f0ad4e;" onclick="openEditUser(${u.id}, '${escapeHtml(u.name)}', '${escapeHtml(u.email)}')">Edit</button>`;
 
                     html += `<tr>
                         <td>${escapeHtml(u.name)} ${u.is_admin ? '(Admin)' : ''}</td>
@@ -583,6 +621,47 @@
                 if(data.success) { showToast('Deleted', 'success'); loadUsers(); }
                 else showToast(data.message, 'error');
              } catch(e) { showToast('Error', 'error'); }
+        }
+
+        function openEditUser(id, name, email) {
+            const formHtml = `
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" class="form-control" id="edit-name" value="${name}">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" class="form-control" id="edit-email" value="${email}">
+                </div>
+                <div class="form-group">
+                    <label>New Password (Optional)</label>
+                    <input type="password" class="form-control" id="edit-pass" placeholder="Leave empty to keep current">
+                </div>
+                <button class="btn" onclick="submitEditUser(${id})">Save Changes</button>
+            `;
+            createModal('Edit User', formHtml);
+        }
+
+        async function submitEditUser(id) {
+            const name = document.getElementById('edit-name').value;
+            const email = document.getElementById('edit-email').value;
+            const password = document.getElementById('edit-pass').value;
+
+            try {
+                const res = await fetch('/api/admin/edit_user/' + id, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, email, password})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    showToast('User updated', 'success');
+                    document.getElementById('custom-modal').style.display='none';
+                    loadUsers();
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch(e) { showToast('Error updating user', 'error'); }
         }
         {% endif %}
 
