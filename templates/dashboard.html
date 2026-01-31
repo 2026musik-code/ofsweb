@@ -7,6 +7,8 @@
     <!-- Import Font: Outfit -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -267,9 +269,21 @@
             </div>
 
             <div class="card">
-                <h2>System Info</h2>
-                <p>Status: Running</p>
-                <p>Version: 1.0.0</p>
+                <h2>Network Traffic (Real-time)</h2>
+                <div style="height: 300px; width: 100%;">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Server Information</h2>
+                <table style="margin-top:0;">
+                    <tr><td>Hostname</td><td id="info-hostname">Loading...</td></tr>
+                    <tr><td>Public IP</td><td id="info-ip">Loading...</td></tr>
+                    <tr><td>Uptime</td><td id="info-uptime">Loading...</td></tr>
+                    <tr><td>Status</td><td><span style="color:#00d26a">Running</span></td></tr>
+                    <tr><td>Version</td><td>1.0.0</td></tr>
+                </table>
             </div>
         </div>
 
@@ -457,6 +471,51 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
+        // Chart Variables
+        let trafficChart;
+        let lastSent = 0;
+        let lastRecv = 0;
+
+        function initChart() {
+            const ctx = document.getElementById('trafficChart').getContext('2d');
+            trafficChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Upload (KB/s)',
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                            data: [],
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Download (KB/s)',
+                            borderColor: '#764ba2',
+                            backgroundColor: 'rgba(118, 75, 162, 0.2)',
+                            data: [],
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#fff' } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    },
+                    animation: { duration: 0 }
+                }
+            });
+        }
+
         async function updateStats() {
             try {
                 const res = await fetch('/api/stats');
@@ -464,7 +523,53 @@
                 document.getElementById('cpu-val').innerText = data.cpu + '%';
                 document.getElementById('ram-val').innerText = data.ram + '%';
                 document.getElementById('acc-count').innerText = data.active_accounts;
+
+                // Server Info
+                if(data.hostname) document.getElementById('info-hostname').innerText = data.hostname;
+                if(data.uptime) document.getElementById('info-uptime').innerText = data.uptime;
+
+                // Chart Data Calculation
+                const now = new Date().toLocaleTimeString();
+
+                if (lastSent === 0) {
+                    lastSent = data.bytes_sent;
+                    lastRecv = data.bytes_recv;
+                } else {
+                    // Bytes diff / 5 seconds (interval) -> KB/s
+                    // Usually this runs every 5s.
+                    const sentSpeed = (data.bytes_sent - lastSent) / 1024 / 5;
+                    const recvSpeed = (data.bytes_recv - lastRecv) / 1024 / 5;
+
+                    lastSent = data.bytes_sent;
+                    lastRecv = data.bytes_recv;
+
+                    addDataToChart(now, sentSpeed, recvSpeed);
+                }
+
             } catch(e) { console.log(e); }
+        }
+
+        function addDataToChart(label, sent, recv) {
+            if (!trafficChart) return;
+
+            if (trafficChart.data.labels.length > 20) {
+                trafficChart.data.labels.shift();
+                trafficChart.data.datasets[0].data.shift();
+                trafficChart.data.datasets[1].data.shift();
+            }
+
+            trafficChart.data.labels.push(label);
+            trafficChart.data.datasets[0].data.push(sent);
+            trafficChart.data.datasets[1].data.push(recv);
+            trafficChart.update();
+        }
+
+        async function loadPublicIp() {
+            try {
+                const res = await fetch('/api/public_ip');
+                const data = await res.json();
+                document.getElementById('info-ip').innerText = data.ip;
+            } catch(e) { console.error(e); }
         }
 
         async function updateSystem() {
@@ -774,9 +879,11 @@
         }
 
         // Init
+        initChart();
         setInterval(updateStats, 5000);
         updateStats();
         loadDomain();
+        loadPublicIp();
 
     </script>
 </body>

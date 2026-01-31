@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from vpn_utils import VPNManager
 import threading
 import time
+import socket
+import requests
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'diana-vpn-secret-key-change-me')
@@ -173,7 +175,39 @@ def get_stats():
     cpu = psutil.cpu_percent(interval=None)
     ram = psutil.virtual_memory().percent
     active_accounts = VPNAccount.query.filter_by(user_id=current_user.id).count()
-    return jsonify({'cpu': cpu, 'ram': ram, 'active_accounts': active_accounts})
+
+    # Server Details
+    hostname = socket.gethostname()
+    uptime_seconds = time.time() - psutil.boot_time()
+    uptime_str = str(timedelta(seconds=int(uptime_seconds)))
+
+    # Net IO for Graph
+    net = psutil.net_io_counters()
+
+    # Public IP (Cached simply by simple variable or just fetch once per request?
+    # Fetching every 5s is bad. Let's assume frontend calls a separate endpoint or we check if we have it)
+    # Ideally IP doesn't change. We can skip it here to keep stats fast,
+    # or handle it in the frontend via a separate call if needed.
+    # Let's send basic stats first.
+
+    return jsonify({
+        'cpu': cpu,
+        'ram': ram,
+        'active_accounts': active_accounts,
+        'hostname': hostname,
+        'uptime': uptime_str,
+        'bytes_sent': net.bytes_sent,
+        'bytes_recv': net.bytes_recv
+    })
+
+@app.route('/api/public_ip')
+@login_required
+def get_public_ip():
+    try:
+        ip = requests.get('https://api.ipify.org', timeout=2).text
+    except:
+        ip = "Unknown"
+    return jsonify({'ip': ip})
 
 @app.route('/api/monitor/online')
 @login_required
