@@ -5,10 +5,17 @@ set -e
 echo "Updating package list..."
 if command -v sudo >/dev/null 2>&1; then
     sudo apt-get update -y
-    sudo apt-get install -y python3 python3-pip git curl socat gnupg nginx certbot python3-certbot-nginx dropbear websocat
+    sudo apt-get install -y python3 python3-pip git curl socat gnupg nginx certbot python3-certbot-nginx dropbear
 else
     apt-get update -y
-    apt-get install -y python3 python3-pip git curl socat gnupg nginx certbot python3-certbot-nginx dropbear websocat
+    apt-get install -y python3 python3-pip git curl socat gnupg nginx certbot python3-certbot-nginx dropbear
+fi
+
+# Install Websocat manually (Package not available in some repos)
+echo "Installing Websocat..."
+if ! command -v websocat >/dev/null 2>&1; then
+    curl -L -o /usr/bin/websocat https://github.com/vi/websocat/releases/latest/download/websocat_amd64-linux
+    chmod +x /usr/bin/websocat
 fi
 
 # Configure Dropbear
@@ -64,6 +71,11 @@ if [ -f "xray_config.json" ]; then
     cp xray_config.json /usr/local/etc/xray/config.json
 fi
 systemctl restart xray
+
+# SSL Generation (Bootstrap)
+echo "Generating SSL Certificate..."
+systemctl stop nginx
+certbot certonly --standalone -d "$domain_input" --non-interactive --agree-tos --email admin@"$domain_input"
 
 # Configure Nginx (Front-End 443)
 echo "Configuring Nginx..."
@@ -154,9 +166,8 @@ EOF
 ln -s /etc/nginx/sites-available/diana-vpn /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 
-# SSL with Certbot Nginx Plugin
-echo "Installing SSL..."
-certbot --nginx -d "$domain_input" --non-interactive --agree-tos --email admin@"$domain_input" --redirect
+# Restart Nginx
+systemctl restart nginx
 
 # Setup Systemd
 echo "Setting up Service..."
