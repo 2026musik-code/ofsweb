@@ -28,9 +28,9 @@ class VPNManager:
     @staticmethod
     def create_ssh_user(username, password, expiry_date):
         """Creates a system user for SSH."""
-        # Create user with no home directory and shell set to /usr/sbin/nologin (or /bin/bash if needed)
-        # Using /bin/bash allows SSH login.
-        if not run_command(['useradd', '-m', '-s', '/bin/bash', username]):
+        # Create user with no home directory and shell set to /usr/sbin/nologin
+        # Using /usr/sbin/nologin restricts shell access while allowing tunnel/port forwarding.
+        if not run_command(['useradd', '-m', '-s', '/usr/sbin/nologin', username]):
             return False
 
         # Set password
