@@ -1,11 +1,13 @@
 #!/bin/bash
+set -e
 
 # Update and install system dependencies
+echo "Updating package list..."
 if command -v sudo >/dev/null 2>&1; then
-    sudo apt-get update
+    sudo apt-get update -y
     sudo apt-get install -y python3 python3-pip git curl socat gnupg nginx certbot python3-certbot-nginx dropbear websocat
 else
-    apt-get update
+    apt-get update -y
     apt-get install -y python3 python3-pip git curl socat gnupg nginx certbot python3-certbot-nginx dropbear websocat
 fi
 
@@ -41,7 +43,8 @@ echo "Installing Xray..."
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 
 # Install Python dependencies
-pip3 install -r requirements.txt
+echo "Installing Python dependencies..."
+python3 -m pip install -r requirements.txt
 
 # Prompt for Domain
 read -p "Masukkan Domain VPS Anda (contoh: vpn.example.com): " domain_input
@@ -64,6 +67,8 @@ systemctl restart xray
 
 # Configure Nginx (Front-End 443)
 echo "Configuring Nginx..."
+mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+
 cat <<EOF > /etc/nginx/sites-available/diana-vpn
 server {
     listen 80;
