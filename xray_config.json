@@ -4,33 +4,6 @@
   },
   "inbounds": [
     {
-      "tag": "vless_xtls",
-      "port": 443,
-      "protocol": "vless",
-      "settings": {
-        "clients": [],
-        "decryption": "none",
-        "fallbacks": [
-          {
-            "dest": 8080,
-            "xver": 1
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "tls",
-        "tlsSettings": {
-          "certificates": [
-            {
-              "certificateFile": "/etc/letsencrypt/live/DOMAIN_PLACEHOLDER/fullchain.pem",
-              "keyFile": "/etc/letsencrypt/live/DOMAIN_PLACEHOLDER/privkey.pem"
-            }
-          ]
-        }
-      }
-    },
-    {
       "tag": "vless_ws",
       "port": 10001,
       "listen": "127.0.0.1",
