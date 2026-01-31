@@ -313,28 +313,6 @@ def auto_reboot():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/api/domain', methods=['GET', 'POST'])
-@login_required
-def manage_domain():
-    if request.method == 'POST':
-        data = request.json
-        new_domain = data.get('domain')
-        if not new_domain:
-            return jsonify({'success': False, 'message': 'Domain cannot be empty'}), 400
-
-        config = SystemConfig.query.get('domain')
-        if not config:
-            config = SystemConfig(key='domain', value=new_domain)
-            db.session.add(config)
-        else:
-            config.value = new_domain
-        db.session.commit()
-        return jsonify({'success': True, 'message': 'Domain updated successfully'})
-
-    config = SystemConfig.query.get('domain')
-    domain = config.value if config else 'localhost'
-    return jsonify({'domain': domain})
-
 @app.route('/update', methods=['POST'])
 @login_required
 def update_system():
