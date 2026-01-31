@@ -223,6 +223,9 @@
         <div class="nav-item" onclick="showSection('ss', this)">
             <i class="fas fa-ghost"></i> SHADOWSOCKS
         </div>
+        <div class="nav-item" onclick="showSection('monitor', this)">
+            <i class="fas fa-desktop"></i> Monitor
+        </div>
         <div class="nav-item" onclick="showSection('settings', this)">
             <i class="fas fa-cog"></i> Settings
         </div>
@@ -286,6 +289,7 @@
                 <div class="form-group">
                     <label>Duration</label>
                     <select class="form-control" id="ssh-duration">
+                        <option value="trial">Trial (24 Hours)</option>
                         <option value="3">3 Days</option>
                         <option value="7">7 Days</option>
                         <option value="15">15 Days</option>
@@ -310,6 +314,7 @@
                 <div class="form-group">
                     <label>Duration</label>
                     <select class="form-control" id="vmess-duration">
+                        <option value="trial">Trial (24 Hours)</option>
                         <option value="3">3 Days</option>
                         <option value="7">7 Days</option>
                         <option value="15">15 Days</option>
@@ -330,6 +335,7 @@
             <div class="form-group">
                 <label>Duration</label>
                 <select class="form-control" id="vless-duration">
+                    <option value="trial">Trial (24 Hours)</option>
                     <option value="3">3 Days</option>
                     <option value="7">7 Days</option>
                     <option value="15">15 Days</option>
@@ -346,6 +352,7 @@
             <div class="form-group">
                 <label>Duration</label>
                 <select class="form-control" id="trojan-duration">
+                    <option value="trial">Trial (24 Hours)</option>
                     <option value="3">3 Days</option>
                     <option value="7">7 Days</option>
                     <option value="15">15 Days</option>
@@ -363,6 +370,7 @@
              <div class="form-group">
                 <label>Duration</label>
                 <select class="form-control" id="ss-duration">
+                    <option value="trial">Trial (24 Hours)</option>
                     <option value="3">3 Days</option>
                     <option value="7">7 Days</option>
                     <option value="15">15 Days</option>
@@ -373,6 +381,14 @@
             <div class="card"><h3>Active SS Accounts</h3><div id="ss-list">Loading...</div></div>
         </div>
 
+        <div id="monitor" class="section">
+            <div class="card">
+                <h2>Active Connections</h2>
+                <button class="btn" onclick="loadOnlineUsers()" style="margin-bottom:15px;">Refresh</button>
+                <div id="online-list">Loading...</div>
+            </div>
+        </div>
+
         <div id="settings" class="section">
             <div class="card">
                 <h2>Domain Settings</h2>
@@ -381,6 +397,16 @@
                     <input type="text" class="form-control" id="domain-val">
                 </div>
                 <button class="btn" onclick="updateDomain()">Save Domain</button>
+            </div>
+
+            <div class="card">
+                <h2>Auto Reboot</h2>
+                <div class="form-group">
+                    <label>Reboot Time (Server Time)</label>
+                    <input type="time" class="form-control" id="reboot-time">
+                </div>
+                <button class="btn" onclick="updateReboot()">Set Auto Reboot</button>
+                <button class="btn btn-danger" onclick="disableReboot()" style="margin-left:10px;">Disable</button>
             </div>
         </div>
 
@@ -456,7 +482,13 @@
         async function createAccount(type) {
             const user = document.getElementById(type + '-user').value;
             const pass = document.getElementById(type + '-pass') ? document.getElementById(type + '-pass').value : null;
-            const duration = document.getElementById(type + '-duration') ? document.getElementById(type + '-duration').value : 30;
+            const durationInput = document.getElementById(type + '-duration') ? document.getElementById(type + '-duration').value : 30;
+
+            // Handle Trial
+            let duration = durationInput;
+            if (duration !== 'trial') {
+                duration = parseInt(duration);
+            }
 
             if(!user) return showToast('Username required', 'error');
 
@@ -464,7 +496,7 @@
                 const res = await fetch('/api/account/create', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({type, username: user, password: pass, duration: parseInt(duration)})
+                    body: JSON.stringify({type, username: user, password: pass, duration: duration})
                 });
                 const data = await res.json();
                 if(data.success) {
@@ -487,7 +519,7 @@
                     return;
                 }
 
-                let html = '<table><thead><tr><th>Username</th><th>Expiry</th><th>Details</th><th>Links</th><th>Action</th></tr></thead><tbody>';
+                let html = '<table><thead><tr><th>Username</th><th>Quota</th><th>Expiry</th><th>Details</th><th>Links</th><th>Action</th></tr></thead><tbody>';
                 data.accounts.forEach(acc => {
                     let linkButtons = '';
                     if(acc.links && acc.links.tls) {
@@ -511,6 +543,7 @@
 
                     html += `<tr>
                         <td>${escapeHtml(acc.username)}</td>
+                        <td>${escapeHtml(acc.quota)}</td>
                         <td>${escapeHtml(acc.expiry)}</td>
                         <td>${escapeHtml(acc.details)}</td>
                         <td>${linkButtons}</td>
@@ -530,6 +563,31 @@
             } catch(e) { console.error(e); }
         }
 
+        async function loadOnlineUsers() {
+            const container = document.getElementById('online-list');
+            container.innerHTML = 'Loading...';
+            try {
+                const res = await fetch('/api/monitor/online');
+                const data = await res.json();
+                if(data.online.length === 0) {
+                    container.innerHTML = '<p>No active users found (SSH/System).</p>';
+                    return;
+                }
+
+                let html = '<table><thead><tr><th>Username</th><th>Protocol</th><th>IP Address</th><th>Status</th></tr></thead><tbody>';
+                data.online.forEach(u => {
+                    html += `<tr>
+                        <td>${escapeHtml(u.username)}</td>
+                        <td>${escapeHtml(u.protocol)}</td>
+                        <td>${escapeHtml(u.ip)}</td>
+                        <td><span style="color:#00d26a">${escapeHtml(u.duration)}</span></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch(e) { container.innerHTML = 'Error loading monitor'; }
+        }
+
         async function updateDomain() {
             const domain = document.getElementById('domain-val').value;
             try {
@@ -542,6 +600,34 @@
                 if(data.success) showToast('Domain updated', 'success');
                 else showToast(data.message, 'error');
             } catch(e) { showToast('Error updating domain', 'error'); }
+        }
+
+        async function updateReboot() {
+            const time = document.getElementById('reboot-time').value;
+            if(!time) return showToast('Please select time', 'error');
+
+            try {
+                const res = await fetch('/api/system/autoreboot', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({time, enable: true})
+                });
+                const data = await res.json();
+                if(data.success) showToast('Auto reboot scheduled', 'success');
+                else showToast(data.message, 'error');
+            } catch(e) { showToast('Error', 'error'); }
+        }
+
+        async function disableReboot() {
+            try {
+                const res = await fetch('/api/system/autoreboot', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enable: false})
+                });
+                const data = await res.json();
+                if(data.success) showToast('Auto reboot disabled', 'success');
+            } catch(e) { showToast('Error', 'error'); }
         }
 
         function showSSHDetails(id) {

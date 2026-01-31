@@ -24,6 +24,7 @@ class VPNAccount(db.Model):
     protocol = db.Column(db.String(10)) # ws, tls, tcp
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expiry = db.Column(db.DateTime)
+    quota_used = db.Column(db.BigInteger, default=0) # Total bytes used (upload + download)
 
 class SystemConfig(db.Model):
     key = db.Column(db.String(50), primary_key=True)
